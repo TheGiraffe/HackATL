@@ -5,6 +5,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+		<script src="https://threejs.org/build/three.js"></script>
 		<link type="text/css" rel="stylesheet" href="assets/style.css">
     <link type="text/css" rel="stylesheet" href="assets/app.css">
 		<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
@@ -13,7 +14,7 @@
       body{
 				width:100%;
 				background-color: pink;
-				background-image:url("assets/img/background2.png");
+				background-image:url("assets/img/background3.png");
 				background-size: cover;
 				background-repeat: no-repeat;
 				background-attachment: fixed;
@@ -70,13 +71,13 @@
 				font-weight: 400;
 				padding: 1em;
 			}
-			#close-sidebar{
+			.close-button{
 				background-color: transparent;
 				font-size: 2em;
 				border:none;
 				color: black;
 			}
-			#close-sidebar:hover{
+			.close-button:hover{
 				color:#f77eb9;
 				transition-duration: 0.5s;
 			}
@@ -115,6 +116,9 @@
 				background-color: white;
 				color:black;
 				transition-duration: 0.5s;
+				border-style:solid;
+				border-width: thin;
+				border-color:black;
 			}
 			.sidebar-button{
 				font-family: 'Montserrat', sans-serif;
@@ -132,6 +136,20 @@
 				height: 3.25em;
 				width:3.25em;
 			}
+			.categories{
+				background-color: #f77eb9;
+				font-size: 1.5em;
+				padding: 0.5em 1em;
+				border:none;
+				color: white;
+				display: inline;
+				margin:0.5em;
+			}
+			.categories:hover{
+				background-color: white;
+				color:black;
+				transition-duration: 0.5s;
+			}
     </style>
 	</head>
 	<body>
@@ -139,8 +157,11 @@
 <div id="navbar">
 	<a href="index.html"><button id = "homepage_button" class ="nav" style="float:left" ></button></a>
 	<button id ="add_stuff" class="nav needs-sidebar" style="float:left">Add Stuff</button>
+
 	<button id ="rooms" class="nav needs-sidebar" style="float:left">Rooms</button>
+
 	<button id ="views" class="nav needs-sidebar" style="float:left">Views</button>
+
 	<button id ="import" class="nav" style="float:left">Import</button>
 	<button id ="export" class="nav" style="float:left">Export</button>
 	<button id ="render" class="nav needs-sidebar" style="float:left">Render</button>
@@ -148,11 +169,24 @@
 </div>
 
 <div class = contentcontainer><div id="sidebar">
-Let's make something fabulous! <button id="close-sidebar" style="float:right">x</button>
+Let's make something fabulous! <button id="close-sidebar"class="close-button" style="float:right">x</button>
 <button id="create_room" class="sidebar-button">Create a New Room</button>
+<div id = "add_stuff_menu">
+	<button class = "categories">Themes</button>
+	<button class = "categories">Collections</button>
+	<button class = "categories">Wallpaper + Walls</button>
+	<button class = "categories">Flooring</button>
+	<button class = "categories">Wall Decor</button>
+	<button class = "categories">Furniture</button>
+	<button class = "categories">Decorations</button>
+</div>
 </div>
 <div id="starting_form">
-	<center><p style="background-color:#f77eb9;color:white">NEW ROOM : DIMENSIONS </p>
+	<button class = "close-button" id="close-starting_form" style="float:right">x</button>
+	<br>
+	<center><p style="color:#f77eb9;font-size:2em">CREATE A NEW ROOM</p></center>
+		<center><p>ROOM DIMENSIONS:</p></center>
+		<center>
 			<form style="font-size:1.5em">
 			  <label for="xinput">X: </label>
 			  <input type="text" id="xinput" name="xinput" value="width of your room"> meters<br>
@@ -171,181 +205,118 @@ Let's make something fabulous! <button id="close-sidebar" style="float:right">x<
 		import * as THREE from 'https://unpkg.com/three@0.121.1/build/three.module.js';
 
 		import { DragControls } from 'https://unpkg.com/three@0.121.1/examples/jsm/controls/DragControls.js';
+		import { OrbitControls } from 'https://unpkg.com/three@0.121.1/examples/jsm/controls/OrbitControls.js';
 
-		var container;
-		var camera, scene, renderer;
-		var controls, group;
-		var objects = [];
-		var enableSelection = false;
-
-		var mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
 		$("#start_button").click(function(){
 			$("#starting_form").hide();
+init();
+var camera, controls, scene, renderer;
+var roomx, roomy, roomz, translateModelY,translateModelX;
 
-		init();
-
-		function init() {
-
-			var sizingY = window.innerHeight;
-			var sizingX = window.innerWidth;
-
-			container = document.createElement( 'div' );
-			document.body.appendChild( container );
-
-			camera = new THREE.PerspectiveCamera( 70, sizingX / sizingY, 1, 5000 );
-			camera.position.z = 1000;
-
-			scene = new THREE.Scene();
-			scene.background = null;
-
-			scene.add( new THREE.AmbientLight( 0x505050 ) );
-
-			var light = new THREE.SpotLight( 0xffffff, 1.5 );
-			light.position.set( 0, 500, 2000 );
-			light.angle = Math.PI / 9;
-
-			light.castShadow = true;
-			light.shadow.camera.near = 1000;
-			light.shadow.camera.far = 4000;
-			light.shadow.mapSize.width = 1024;
-			light.shadow.mapSize.height = 1024;
-
-			scene.add( light );
-
-			group = new THREE.Group();
-			scene.add( group );
-
-			var geometry = new THREE.BoxBufferGeometry( 40, 40, 40 );
-
-			for ( var i = 0; i < 200; i ++ ) {
-
-				var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-
-				object.position.x = Math.random() * 1000 - 500;
-				object.position.y = Math.random() * 600 - 300;
-				object.position.z = Math.random() * 800 - 400;
-
-				object.rotation.x = Math.random() * 2 * Math.PI;
-				object.rotation.y = Math.random() * 2 * Math.PI;
-				object.rotation.z = Math.random() * 2 * Math.PI;
-
-				object.scale.x = Math.random() * 2 + 1;
-				object.scale.y = Math.random() * 2 + 1;
-				object.scale.z = Math.random() * 2 + 1;
-
-				object.castShadow = true;
-				object.receiveShadow = true;
-
-				scene.add( object );
-
-				objects.push( object );
-
-			}
-
+function init() {
+	roomx = 75;
+	roomy = 75;
+	roomz = 75;
+	translateModelY = -roomy/2;
+	translateModelX = 0;
+	var sizingY = window.innerHeight;
+	var sizingX = window.innerWidth;
 			renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true  } );
 			renderer.setClearColor( 'white', 0.5 ); // second param is opacity, 0 => transparent
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( sizingX, sizingY );
+			document.body.appendChild( renderer.domElement );
 
-			renderer.shadowMap.enabled = true;
-			renderer.shadowMap.type = THREE.PCFShadowMap;
+			scene = new THREE.Scene();
+			camera = new THREE.PerspectiveCamera( 75, sizingX/sizingY, 0.1, 1000 );
 
-			container.appendChild( renderer.domElement );
+			controls = new OrbitControls( camera, renderer.domElement );
+			controls.addEventListener( 'change', render );
+			controls.screenSpacePanning = false;
+			controls.minDistance = 100;
+			controls.maxDistance = 500;
+			controls.maxPolarAngle = Math.PI / 2;
 
-			controls = new DragControls( [ ... objects ], camera, renderer.domElement );
-			controls.addEventListener( 'drag', render );
+			var floorgeometry = new THREE.PlaneBufferGeometry(roomx,roomy);
+			var material = new THREE.MeshPhongMaterial( { color: 0xfc90ec, flatShading: true } );
+			var floor = new THREE.Mesh( floorgeometry, material );
+			floor.receiveShadow = true;
+			floor.rotation.x = - Math.PI / 2.0;
+			floor.position.y = translateModelY;
+			floor.position.x = translateModelX;
 
-			//
+			scene.add( floor );
 
-			window.addEventListener( 'resize', onWindowResize, false );
+			var wallgeometry_1 = new THREE.PlaneBufferGeometry(roomz,roomx);
+			var rightWall = new THREE.Mesh( wallgeometry_1, material );
+			rightWall.receiveShadow = true;
+			rightWall.rotation.z= - Math.PI / 2.0;
+			rightWall.position.z = -roomy/2.0;
+			rightWall.position.y = +roomz/2.0 +translateModelY;
+			rightWall.position.x = translateModelX;
+			scene.add( rightWall );
 
-			document.addEventListener( 'click', onClick, false );
-			window.addEventListener( 'keydown', onKeyDown, false );
-			window.addEventListener( 'keyup', onKeyUp, false );
+			var leftWall = new THREE.Mesh( wallgeometry_1, material );
+			leftWall.receiveShadow = true;
+			leftWall.rotation.z = - Math.PI / 2.0;
+			scene.add( leftWall );
+			leftWall.position.z = +roomy/2.0;
+			leftWall.position.x = translateModelX;
+			leftWall.position.y = +roomz/2.0 + translateModelY;
 
-			render();
+			var wallgeometry_2 = new THREE.PlaneBufferGeometry(roomy,roomz);
+			var back_wall = new THREE.Mesh( wallgeometry_2, material );
+			back_wall.receiveShadow = true;
+			back_wall.rotation.y = - Math.PI / 2.0;
+			back_wall.position.x = +roomx/2.0 + translateModelX;
+			back_wall.position.y = +roomz/2.0 + translateModelY;
+			scene.add( back_wall );
 
-		}
+			floorgeometry.center();
+			wallgeometry_1.center();
+			wallgeometry_2.center();
 
-		function onWindowResize() {
+			var light = new THREE.DirectionalLight( 0xffffff );
+			light.position.set( 1, 1, 1 );
+			scene.add( light );
 
-			camera.aspect = sizingX / sizingY;
-			camera.updateProjectionMatrix();
+			var light = new THREE.DirectionalLight( 0xffffff );
+			light.position.set( - 1, - 1, - 1 );
+			scene.add( light );
 
-			renderer.setSize( sizingX, sizingY );
+			var light = new THREE.AmbientLight( 0x222222 );
+			scene.add( light );
 
-			render();
+window.addEventListener( 'resize', onWindowResize, false );
 
-		}
+}
 
-		function onKeyDown( event ) {
+function onWindowResize() {
+	var sizingY = window.innerHeight;
+	var sizingX = window.innerWidth;
+	camera.aspect = sizingX / sizingY;
+	camera.updateProjectionMatrix();
 
-			enableSelection = ( event.keyCode === 16 ) ? true : false;
+	renderer.setSize( sizingX, sizingY );
 
-		}
+}
 
-		function onKeyUp() {
+function animate() {
 
-			enableSelection = false;
+	requestAnimationFrame( animate );
 
-		}
+	render();
 
-		function onClick( event ) {
+}
 
-			event.preventDefault();
-
-			if ( enableSelection === true ) {
-
-				var draggableObjects = controls.getObjects();
-				draggableObjects.length = 0;
-
-				mouse.x = ( event.clientX / sizingX ) * 2 - 1;
-				mouse.y = - ( event.clientY / sizingY ) * 2 + 1;
-
-				raycaster.setFromCamera( mouse, camera );
-
-				var intersections = raycaster.intersectObjects( objects, true );
-
-				if ( intersections.length > 0 ) {
-
-					var object = intersections[ 0 ].object;
-
-					if ( group.children.includes( object ) === true ) {
-
-						object.material.emissive.set( 0x000000 );
-						scene.attach( object );
-
-					} else {
-
-						object.material.emissive.set( 0xaaaaaa );
-						group.attach( object );
-
-					}
-
-					controls.transformGroup = true;
-					draggableObjects.push( group );
-
-				}
-
-				if ( group.children.length === 0 ) {
-
-					controls.transformGroup = false;
-					draggableObjects.push( ...objects );
-
-				}
-
-			}
-
-			render();
-
-		}
-
-		function render() {
+function render() {
 
 			renderer.render( scene, camera );
 
 		}
-	});
+
+
+});
 		</script>
 
 </div>
@@ -356,6 +327,7 @@ $(document).ready(function(){
 	$("#sidebar").hide();
 $("#starting_form").hide();
 $("#create_room").hide();
+$("#add_stuff_menu").hide();
 
 $(".needs-sidebar").click(function(){
 $("#sidebar").show();
@@ -367,8 +339,13 @@ $("#close-sidebar").click(function(){
 		$("#sidebar").fadeOut();
 	});
 
+	$("#close-starting_form").click(function(){
+			$("#starting_form").fadeOut();
+		});
+
 $("#rooms").click(function(){
 	$("#create_room").show();
+	$("#add_stuff_menu").hide();
 	$("#create_room").click(function(){
 			$("#starting_form").fadeIn();
 			$('#sidebar').animate({left:'-30%'});
@@ -377,12 +354,15 @@ $("#rooms").click(function(){
 
 		$("#add_stuff").click(function(){
 			$("#create_room").hide();
+			$("#add_stuff_menu").show();
 		});
 		$("#views").click(function(){
 			$("#create_room").hide();
+			$("#add_stuff_menu").hide();
 			});
 		$("#render").click(function(){
 			$("#create_room").hide();
+			$("#add_stuff_menu").hide();
 			});
 
 });
